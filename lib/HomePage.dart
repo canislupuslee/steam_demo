@@ -28,7 +28,7 @@ class _AppState extends State<Home> {
                   new RaisedButton(
                     child: Text('Start NFC'),
                     onPressed: () {
-                      return MyApp();
+//                      return MyApp();
                     },
                   ),
 

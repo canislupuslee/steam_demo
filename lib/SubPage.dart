@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 import 'blocs/bloc_provider.dart';
 import 'blocs/nfc_bloc.dart';
 import 'package:flutter_nfc_reader/flutter_nfc_reader.dart';
+import 'package:stream_demo/util/constants.dart';
+
 class MyApp extends StatelessWidget {
+  static NfcData _nfcData;
   static const String sName = '/';
-  MyApp(){
+  MyApp(NfcData nfcData){
     print("create myapp");
+    _nfcData = nfcData;
   }
   @override
   Widget build(BuildContext context) {
@@ -16,40 +21,49 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: BlocProvider(
-          child: AppPage(title: 'sub page'),
+          child: AppPage(title: 'sub page',nfcData: _nfcData),
           blocs: [NfcBloc()]),
     );
   }
 }
 
 class AppPage extends StatefulWidget {
-  AppPage({Key key, this.title}) : super(key: key);
+  AppPage({Key key, this.title,this.nfcData}) : super(key: key);
 
   final String title;
+  final NfcData nfcData;
 
   @override
-  _AppPageState createState() => _AppPageState();
+  _AppPageState createState() => _AppPageState(MyApp._nfcData);
 }
 
 class _AppPageState extends State<AppPage> {
   NfcData _nfcData;
+  static NfcData nfcData2;
 
-//  void _incrementCounter() {
-//    BlocProvider.of<NfcBloc>(context).first.increment(_nfcData);
-//  }
+  _AppPageState(NfcData _nfcData){
+    this._nfcData = _nfcData;
+  }
 
   @override
   void initState() {
-    _nfcData = new NfcData();
-//    BlocProvider.of<NfcBloc>(context).first.nfcData.listen((response) {
-//      print("read nfc");
-//      setState(() {
-//        _nfcData =  response;
-//      });
-//    });
-    startNFC();
     super.initState();
+    Constants.streamSubscription.onData(onData);
+    Constants.nfdDataStreamSubscription.onData(onNfcData);
   }
+  void onData(data){
+    print("subPage ondata: $data");
+  }
+
+  void onNfcData(nfcData){
+    setState(() {
+      print("set...");
+      _nfcData = nfcData;
+      print("data :  ${_nfcData.id}");
+    });
+    print(nfcData.id);
+  }
+
   @override
   void didUpdateWidget(AppPage oldWidget) {
     print("do didUpdateWidget");
@@ -64,7 +78,7 @@ class _AppPageState extends State<AppPage> {
   @override
   void deactivate() {
     print("do deactivate");
-    stopNFC();
+//    stopNFC();
     super.deactivate();
   }
   void _onError(error){
@@ -98,10 +112,10 @@ class _AppPageState extends State<AppPage> {
               style: Theme.of(context).textTheme.display1,
             ),OutlineButton(
               child: Text("click me"),
-              onPressed: ()=>Navigator.push(
-                context,
-                new MaterialPageRoute(builder: (context) => new MyApp()),
-              ),
+//              onPressed: ()=>Navigator.push(
+//                context,
+//                new MaterialPageRoute(builder: (context) => new MyApp()),
+//              ),
             ),
           ],
         ),
@@ -115,38 +129,7 @@ class _AppPageState extends State<AppPage> {
     );
   }
 
-  Future<void> startNFC() async {
-    setState(() {
-      _nfcData = NfcData();
-      _nfcData.status = NFCStatus.reading;
-    });
-
-    print('NFC: Scan started');
-
-    print('NFC: Scan readed NFC tag');
-    FlutterNfcReader.read.listen((response) {
-      setState(() {
-        _nfcData = response;
-      });
-    },onError: (error)=>print(error),onDone: ()=>print("on done"));
-  }
-
-  Future<void> stopNFC() async {
-    NfcData response;
-
-    try {
-      print('NFC: Stop scan by user');
-      response = await FlutterNfcReader.stop;
-      print("stop success "+response.status.toString());
-    } on Exception {
-      print('NFC: Stop scan exception');
-      response = NfcData(
-        id: '',
-        content: '',
-        error: 'NFC scan stop exception',
-        statusMapper: '',
-      );
-      response.status = NFCStatus.error;
-    }
-  }
 }
+
+
+

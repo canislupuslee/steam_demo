@@ -4,70 +4,77 @@ import 'blocs/bloc_provider.dart';
 import 'blocs/counter_bloc.dart';
 import 'package:stream_demo/SubPage.dart';
 import 'package:flutter_nfc_reader/flutter_nfc_reader.dart';
-import 'package:stream_demo/util/constants.dart';
-import 'package:stream_demo/util/nfc_decode.dart';
 
-
-void main(){
-  runApp(App());
-  Constants.nfdDataStreamSubscription = Constants.nfcStream.listen((response) {
-        print("start nfc listen");
-        Constants.NFCDATA =  response;
-        print(Constants.NFCDATA.id);
-
-  });
-  Constants.dataStream  = Stream.fromFuture(fetchData());
-
-  Constants.streamSubscription = Constants.dataStream.listen(onData,onError: onError);
-}
-Future<String> fetchData() async{
-  await Future.delayed(Duration(seconds: 10));
-  return "hello";
-}
-void onData(data){
-  print("接受到数据：$data");
-}
-
-void onError(error){
-  print("on error $error");
-}
+void main() => runApp(App());
 
 class App extends StatelessWidget {
+  static final  Stream nfcStream = FlutterNfcReader.read ;
+  static  bool startNFC = false;
+  static NfcData nfcData = NfcData();
+  static final Stream<NfcData> _nfcDataStream =  Stream.fromFuture(getData());
+
+  App(){
+    _nfcDataStream.listen((data)=>{
+        print("接收到值${App.nfcData.id}")
+    });
+  }
   @override
   Widget build(BuildContext context) {
+    if(!startNFC){
+      nfcStream.listen((response) {
+        print("start nfc listen");
+        App.nfcData =  response;
+        print(App.nfcData.id);
+
+      });
+      startNFC = true;
+    }
+    print("app stream code : "+ nfcStream.hashCode.toString());
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
       home: BlocProvider(
-          child: MyHomePage(title: 'Flutter Demo Home Page'),
+          child: MyHomePage(title: 'Flutter Demo Home Page',nfcData: nfcData,),
           blocs: [CounterBloc()]),
     );
+  }
+  static Future<NfcData> getData() async{
+    print("send data ");
+    return nfcData;
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
+  MyHomePage({Key key, this.title,this.nfcData}) : super(key: key);
 
   final String title;
+  final NfcData nfcData;
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _MyHomePageState createState() => _MyHomePageState(nfcData);
 }
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
-
+  NfcData nfcData ;
+  _MyHomePageState(NfcData nfcData){
+    this.nfcData = nfcData;
+  }
   void _incrementCounter() {
     BlocProvider.of<CounterBloc>(context).first.increment(_counter);
   }
+
   @override
   void initState() {
     BlocProvider.of<CounterBloc>(context).first.counter.listen((_count) {
       setState(() {
         _counter = _count;
       });
+    });
+    setState(() {
+      nfcData = nfcData;
     });
     super.initState();
   }
@@ -93,11 +100,8 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Text("点我进入nfc页面"),
               onPressed: ()=>Navigator.push(
                 context,
-                new MaterialPageRoute(builder: (context) => new MyApp(new NfcData())),
+                new MaterialPageRoute(builder: (context) => new MyApp(nfcData)),
               ),
-            ),OutlineButton(
-              child: Text("解码"),
-              onPressed: ()=>decode("0xf99bdcf6"),
             ),
           ],
         ),
@@ -115,10 +119,5 @@ class _MyHomePageState extends State<MyHomePage> {
 
       ),
     );
-  }
-
-  void decode(decodeStr){
-    var result = NFCDecode.decodeHexString(decodeStr);
-    print("解码 $decodeStr ：$result");
   }
 }
